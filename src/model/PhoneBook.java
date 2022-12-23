@@ -2,6 +2,7 @@ package model;
 
 import java.io.*;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PhoneBook implements Serializable {
@@ -32,14 +33,20 @@ public class PhoneBook implements Serializable {
     }
 
     public String replace(String name, String newNumber) {
-        return null;
+        book.replace(name, newNumber);
+        return "Pomyslnie zmieniono numer " + name + " na: " + newNumber;
     }
 
     String delete(String name) {
-        return null;
+        String removed = book.remove(name);
+        return removed == null ? "Nie znaleziono osoby " + name : "Pomyślnie usunięto " + name;
     }
 
     String list() {
-        return null;
+        StringBuilder builder = new StringBuilder();
+        for (Map.Entry<String, String> entries : book.entrySet()) {
+            builder.append(entries.getKey()).append(" ").append(entries.getValue()).append("\n");
+        }
+        return builder.toString();
     }
 }
