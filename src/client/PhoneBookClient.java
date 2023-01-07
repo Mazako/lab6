@@ -1,6 +1,5 @@
 package client;
 
-import model.ServerConnectionException;
 import server.PhoneBookServer;
 
 import javax.swing.*;
@@ -30,18 +29,40 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
     private final JButton startButton = new JButton("Połącz się");
 
     public PhoneBookClient() {
-        this.setLocationRelativeTo(null);
         this.setResizable(false);
         this.setSize(WIDTH, HEIGHT);
+        this.setLocationRelativeTo(null);
+        this.setTitle("Klient do książeczki telefonicznej");
+        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                try {
+                    if (clientConnection != null) {
+                        clientConnection.closeConnection();
+                    }
+                    e.getWindow().dispose();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+                windowClosing(e);
+            }
+        });
         mainPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
         mainPanel.setBackground(Color.gray);
 
         promptTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN,  18));
         promptTextArea.setEditable(false);
         promptTextArea.append(">Czekam na połączenie z serwerem...\n");
-        scrollPane = new JScrollPane();
-        scrollPane.setViewportView(promptTextArea);
+        promptTextArea.setLineWrap(true);
+
+        scrollPane = new JScrollPane(promptTextArea);
         scrollPane.setPreferredSize(new Dimension(750, 550));
+        scrollPane.setAutoscrolls(true);
         mainPanel.add(scrollPane);
 
         commandField.setPreferredSize(new Dimension(750, 28));
@@ -105,7 +126,7 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
         int keyCode = e.getKeyCode();
         if (source == commandField && keyCode == KeyEvent.VK_ENTER && !commandField.getText().isBlank()) {
             String command = commandField.getText();
-            promptTextArea.append("KLIENT>> " + command + '\n');
+            promptTextArea.append("KLIENT>>> " + command + '\n');
             clientConnection.out.println(command);
             commandField.setText("");
         }
@@ -118,8 +139,8 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
 
     private class ClientConnection implements Runnable{
 
-        private String ip;
-        private int port;
+        private final String ip;
+        private final int port;
         private Socket socket;
         private PrintWriter out;
         private BufferedReader in;
@@ -129,9 +150,12 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
         }
 
         public void  closeConnection() throws IOException {
-            in.close();
-            out.close();
-            socket.close();
+            if (in != null)
+                in.close();
+            if (out != null)
+                out.close();
+            if (socket != null)
+                socket.close();
         }
 
         @Override
@@ -152,15 +176,16 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
                         "Błąd połączenia",
                         JOptionPane.ERROR_MESSAGE
                 );
+                return;
             }
             try {
                 while (true) {
                     String response = in.readLine();
-                    promptTextArea.append("SERWER>>> " + response + "\n");
-                    if ("Koniec.".equals(response)) {
+                    if ("STOP".equals(response) || in.readLine() == null) {
                         closeConnection();
                         break;
                     }
+                    promptTextArea.append("SERWER>>> " + response + "\n");
                 }
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(PhoneBookClient.this,
