@@ -6,28 +6,41 @@ import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PhoneBook implements Serializable {
+    public static final long serialVersionUID = 1L;
     public static final String putInstruction = "PUT <imię> <numer> - zapisuje podaną osobę o podanym numerze telefonu do książeczki";
     public static final String listInstruction = "LIST - wyświetla listę wszystkich zapisanych imion";
     public static final String deleteInstruction = "DELETE <imię> - usuwa z książeczki numer o podanym imieniu";
     public static final String getInstruction = "GET <imię> - zwraca numer osoby o podanym imieniu";
-
     public static final String closeInstruction = "CLOSE - zamyka gniazdo serwera, co powoduje, że serwer nie przyjmie więcej połączeń i wyłączy się gdy reszta otwartych połączeń zostanie zakończona";
     public static final String byeInstruction = "BYE - zamyka połaczenie z serwerem";
     public static final String replaceInstruction = "REPLACE <imię> <numer> - zmienia numer podanej osoby na podany w poleceniu";
+
+    public static final String loadInstruction = "LOAD <nazwa_pliku> - wczytuje plik z kartoteki serwera, i zastępuje książkę adresową wczytaną książką";
+    public static final String saveInstruction = "SAVE <nazwa_pliku> - zapisuje plik do kartoteki serwera";
+    public static final String filesInstruction = "FILES - wyświetla listę wszystkich książeczek w kartotece";
     private ConcurrentHashMap<String, String> book = new ConcurrentHashMap<>();
 
-    public synchronized String load(File path) {
-        try (var ois = new ObjectInputStream(new FileInputStream(path))) {
+    public synchronized String load(String fileName) {
+        try (var ois = new ObjectInputStream(new FileInputStream(Path.of("./","files",fileName).toFile()))) {
            var map =  (ConcurrentHashMap<String, String>) ois.readObject();
            book = map;
-           return "Pomyślnie wczytano nową książkę telefoniczną";
+           return "OK Pomyślnie wczytano nową książkę telefoniczną";
         } catch (IOException | ClassNotFoundException e) {
-            return "Błąd w wczytywaniu danych z pliku";
+            return "ERROR Błąd w wczytywaniu danych z pliku";
         }
     }
 
-    public String save(Path path) {
-        return null;
+    public synchronized String save(String fileName) {
+        File file = new File("./files");
+        if (!file.exists()) {
+            file.mkdirs();
+        }
+        try (var oos = new ObjectOutputStream(new FileOutputStream(Path.of("./","files",fileName).toFile()))) {
+            oos.writeObject(book);
+        } catch (IOException e) {
+            return "ERROR Błąd przy zapisie do kartoteki";
+        }
+        return "OK Pomyślnie zapisano do kartoteki";
     }
 
     public String get(String name) {
@@ -61,5 +74,20 @@ public class PhoneBook implements Serializable {
             builder.append(name).append(" ");
         }
         return builder.toString();
+    }
+
+    public String listFiles() {
+        File file = new File("./files");
+        if (!file.exists()) {
+            file.mkdirs();
+            return "OK ";
+        }
+        StringBuilder stringBuilder = new StringBuilder("OK ");
+        File[] files = file.listFiles();
+        for (File f : files) {
+            stringBuilder.append(f.getName()).append(" ");
+        }
+        return stringBuilder.toString();
+
     }
 }

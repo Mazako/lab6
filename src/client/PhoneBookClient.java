@@ -1,5 +1,6 @@
 package client;
 
+import model.PhoneBook;
 import server.PhoneBookServer;
 
 import javax.swing.*;
@@ -13,11 +14,13 @@ import java.net.Socket;
 
 public class PhoneBookClient extends JFrame implements ActionListener, KeyListener {
 
+    private final JMenuBar menu = new JMenuBar();
+        private final JMenu aboutMenu = new JMenu("O programie");
+            private final JMenuItem aboutMenuItem = new JMenuItem("Autor");
+            private final JMenuItem instructionsMenuItem = new JMenuItem("Instrukcja");
     public static final int WIDTH = 800;
-    public static final int HEIGHT = 800;
-
+    public static final int HEIGHT = 820;
     private final JPanel mainPanel = new JPanel();
-
     private ClientConnection clientConnection;
     private final JTextArea promptTextArea = new JTextArea();
     private final JScrollPane scrollPane;
@@ -33,18 +36,17 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
         this.setSize(WIDTH, HEIGHT);
         this.setLocationRelativeTo(null);
         this.setTitle("Klient do książeczki telefonicznej");
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        this.setDefaultCloseOperation(EXIT_ON_CLOSE);
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                try {
                     if (clientConnection != null) {
-                        clientConnection.closeConnection();
+                        try {
+                            clientConnection.closeConnection();
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
+                        }
                     }
-                    e.getWindow().dispose();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
             }
 
             @Override
@@ -58,11 +60,10 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
         promptTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN,  18));
         promptTextArea.setEditable(false);
         promptTextArea.append(">Czekam na połączenie z serwerem...\n");
-        promptTextArea.setLineWrap(true);
+        promptTextArea.setWrapStyleWord(true);
 
         scrollPane = new JScrollPane(promptTextArea);
         scrollPane.setPreferredSize(new Dimension(750, 550));
-        scrollPane.setAutoscrolls(true);
         mainPanel.add(scrollPane);
 
         commandField.setPreferredSize(new Dimension(750, 28));
@@ -96,6 +97,12 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
         mainPanel.add(startButton);
 
 
+        aboutMenu.add(aboutMenuItem);
+        aboutMenu.add(instructionsMenuItem);
+        aboutMenuItem.addActionListener(this);
+        instructionsMenuItem.addActionListener(this);
+        menu.add(aboutMenu);
+        this.setJMenuBar(menu);
 
         this.add(mainPanel);
         this.setVisible(true);
@@ -112,6 +119,30 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
             int port = Integer.parseInt(portJTextField.getText());
             clientConnection = new ClientConnection(ip, port);
             new Thread(clientConnection).start();
+        } else if (source == aboutMenuItem) {
+            JOptionPane.showMessageDialog(this,
+                    "Laboratorium 6\n\n" +
+                    "Program będący klientem do książki telefonicznej\n" +
+                    "Michał Maziarz, Styczeń 2023",
+                    "O programie",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        } else if (source == instructionsMenuItem) {
+            StringBuilder stringBuilder = new StringBuilder("Spis komend:\n\n");
+            stringBuilder.append(PhoneBook.closeInstruction).append("\n")
+                    .append(PhoneBook.byeInstruction).append("\n")
+                    .append(PhoneBook.deleteInstruction).append("\n")
+                    .append(PhoneBook.putInstruction).append("\n")
+                    .append(PhoneBook.listInstruction).append("\n")
+                    .append(PhoneBook.filesInstruction).append("\n")
+                    .append(PhoneBook.getInstruction).append("\n")
+                    .append(PhoneBook.replaceInstruction).append("\n")
+                    .append(PhoneBook.loadInstruction).append("\n")
+                    .append(PhoneBook.saveInstruction).append("\n");
+            JOptionPane.showMessageDialog(this,
+                    stringBuilder.toString(),
+                    "Instrukcja",
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -150,10 +181,10 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
         }
 
         public void  closeConnection() throws IOException {
-            if (in != null)
-                in.close();
             if (out != null)
                 out.close();
+            if (in != null)
+                in.close();
             if (socket != null)
                 socket.close();
         }
@@ -179,13 +210,15 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
                 return;
             }
             try {
-                while (true) {
+                while (!socket.isClosed()) {
+                    System.out.println(socket.isConnected());
                     String response = in.readLine();
-                    if ("STOP".equals(response) || in.readLine() == null) {
+                    if ("STOP".equals(response)) {
                         closeConnection();
                         break;
                     }
                     promptTextArea.append("SERWER>>> " + response + "\n");
+                    promptTextArea.setCaretPosition(promptTextArea.getDocument().getLength());
                 }
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(PhoneBookClient.this,

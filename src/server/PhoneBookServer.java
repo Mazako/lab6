@@ -91,12 +91,35 @@ public class PhoneBookServer {
                 case "REPLACE":
                     response = phoneBookReplace(params);
                     break;
+                case "SAVE":
+                    response = phoneBookSave(params);
+                    break;
+                case "LOAD":
+                    response = phoneBookLoad(params);
+                    break;
+                case "FILES":
+                    response = phoneBook.listFiles();
+                    break;
                 default:
                     response = "ERROR nieznana komenda";
                     break;
             }
             out.println(response);
 
+        }
+
+        private String phoneBookLoad(String[] params) {
+            if (params == null || params.length != 1) {
+                return badParamsMessage(PhoneBook.loadInstruction);
+            }
+            return phoneBook.load(params[0]);
+        }
+
+        private String phoneBookSave(String[] params) {
+            if (params == null || params.length != 1) {
+                return badParamsMessage(PhoneBook.saveInstruction);
+            }
+            return phoneBook.save(params[0]);
         }
 
         private String phoneBookReplace(String[] params) {
