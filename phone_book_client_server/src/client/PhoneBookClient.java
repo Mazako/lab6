@@ -211,7 +211,6 @@ public class PhoneBookClient extends JFrame implements ActionListener, KeyListen
             }
             try {
                 while (!socket.isClosed()) {
-                    System.out.println(socket.isConnected());
                     String response = in.readLine();
                     if ("STOP".equals(response)) {
                         closeConnection();

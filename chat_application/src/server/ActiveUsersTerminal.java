@@ -1,5 +1,6 @@
 package server;
 
+import model.CommunicationSignals;
 import model.User;
 
 import java.io.*;
@@ -51,21 +52,40 @@ class ActiveUsersTerminal {
         @Override
         public void run() {
             System.out.println("Rozpoczęto połączenie z klientem: " + clientSocket.getInetAddress().getHostName());
+            long id = 0;
             try {
                 ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
                 ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-                User newUser = (User) in.readObject();
-                long id = staticUserId++;
-                activeUsers.put(id, newUser);
-                while (true) {
-                    ArrayList<User> activeUsersLocalCopy = new ArrayList<>(activeUsers.values());
-                    out.writeObject(activeUsersLocalCopy);
-                    Thread.sleep(5000);
+                id = staticUserId++;
+                CommunicationSignals signal;
+                boolean closed = false;
+                while (!closed) {
+                    signal = (CommunicationSignals) in.readObject();
+                    switch (signal) {
+                        case SAVE_ME:
+                            User user = (User) in.readObject();
+                            activeUsers.put(id, user);
+                            break;
+                        case CLOSE_TERMINAL_CONNECTION:
+                            out.writeObject(CommunicationSignals.BYE);
+                            closed = true;
+                            break;
+                        case SEND_ACTIVE_USERS:
+                            User[] users = activeUsers.values().toArray(User[]::new);
+                            out.writeObject(users);
+                    }
                 }
-            } catch (IOException | InterruptedException | ClassNotFoundException e) {
+                System.out.println("Koniec połączenia");
+                activeUsers.remove(id);
+                out.close();
+                in.close();
+                clientSocket.close();
+            } catch (IOException | ClassNotFoundException e) {
+                activeUsers.remove(id);
                 throw new RuntimeException(e);
             }
         }
+
     }
 
     private class ActiveUsersThread implements Runnable {
@@ -75,7 +95,7 @@ class ActiveUsersTerminal {
                 String activeUsersInfo = activeUsers.values()
                         .stream()
                         .map(User::toString)
-                        .reduce("Aktywni użytkownicy: ", (subtotal, user) -> subtotal + user);
+                        .reduce("Aktywni użytkownicy: ", (subtotal, user) -> subtotal + " " + user);
                 System.out.println(activeUsersInfo);
                 try {
                     Thread.sleep(ACTIVE_USERS_TIMEOUT_MILIS);
