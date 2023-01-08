@@ -30,7 +30,6 @@ class LoginPanel extends JFrame implements ActionListener {
 
     private final JButton connectButton = new JButton("Połącz");
 
-
     public LoginPanel() {
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
         this.setTitle("Logowanie do czatu");

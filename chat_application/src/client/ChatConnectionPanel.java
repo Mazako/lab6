@@ -1,6 +1,5 @@
 package client;
 
-import model.CommunicationSignals;
 import model.User;
 
 import javax.swing.*;
@@ -12,11 +11,10 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class ChatConnectionPanel extends JFrame implements KeyListener {
     private final User serverUser;
@@ -25,19 +23,20 @@ public class ChatConnectionPanel extends JFrame implements KeyListener {
     private final ObjectOutputStream out;
     private final ObjectInputStream in;
     public static final int WIDTH = 800;
-    public static final int HEIGHT = 820;
+    public static final int HEIGHT = 650;
     private final JPanel mainPanel = new JPanel();
     private final JTextArea promptTextArea = new JTextArea();
     private final JScrollPane scrollPane;
     private final JTextField commandField = new JTextField();
+    private final List<User> activeUsersCallback;
 
-    public ChatConnectionPanel(User serverUser, User clientUser, Socket socket, ObjectOutputStream out, ObjectInputStream in) throws IOException {
+    public ChatConnectionPanel(User serverUser, User clientUser, Socket socket, ObjectOutputStream out, ObjectInputStream in, List<User> activeUsersCallback) throws IOException {
         this.serverUser = serverUser;
         this.clientUser = clientUser;
         this.socket = socket;
         this.out = out;
         this.in = in;
-
+        this.activeUsersCallback = activeUsersCallback;
         this.setResizable(false);
         this.setSize(WIDTH, HEIGHT);
         this.setLocationRelativeTo(null);
@@ -70,6 +69,9 @@ public class ChatConnectionPanel extends JFrame implements KeyListener {
                     out.close();
                     in.close();
                     socket.close();
+                    synchronized (activeUsersCallback) {
+                        activeUsersCallback.remove(serverUser);
+                    }
                     dispose();
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
@@ -139,6 +141,9 @@ public class ChatConnectionPanel extends JFrame implements KeyListener {
                     socket.close();
                     out.close();
                     in.close();
+                    synchronized (activeUsersCallback) {
+                        activeUsersCallback.remove(serverUser);
+                    }
                 } catch (IOException ex) {
                 }
             }

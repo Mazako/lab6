@@ -16,6 +16,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
     public static final int WIDTH = 500;
@@ -29,6 +32,7 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
     private final JLabel activeUsersLabel = new JLabel("Aktywni użytkownicy: ");
     private final JButton startConnectionButton = new JButton("Połącz się");
     private final ServerSocket serverSocket;
+    private final List<User> activeUsers = Collections.synchronizedList(new ArrayList<>());
 
     public ClientPanel(Socket socket, String userName) throws IOException {
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -52,6 +56,26 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
             socket.close();
             dispose();
         }
+        serverSocket = new ServerSocket(user.getPort());
+        System.out.println("USER - " + user);
+        //END OF SOCKET PART
+        //GRAPHICAL PART
+        this.setSize(WIDTH, HEIGHT);
+        this.setLocationRelativeTo(null);
+        this.setTitle("BlaBla BlaBla - " + user.getName());
+        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        this.setResizable(false);
+        this.setLayout(new FlowLayout(FlowLayout.LEFT));
+        activeUsersLabel.setFont(new Font(Font.DIALOG, Font.PLAIN, 18));
+        this.add(activeUsersLabel);
+        this.add(activeUsersComboBox);
+        activeUsersComboBox.setPrototypeDisplayValue(new User("                                                          ", null));
+        activeUsersComboBox.addPopupMenuListener(this);
+        startConnectionButton.addActionListener(this);
+        this.add(startConnectionButton);
+        new Thread(new GetActiveUsersThread()).start();
+        new Thread(new ConnectionListener()).start();
+        this.setVisible(true);
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -76,26 +100,6 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
                 windowClosing(e);
             }
         });
-        serverSocket = new ServerSocket(user.getPort());
-        System.out.println("USER - " + user);
-        //END OF SOCKET PART
-        //GRAPHICAL PART
-        this.setSize(WIDTH, HEIGHT);
-        this.setLocationRelativeTo(null);
-        this.setTitle("BlaBla BlaBla - " + user.getName());
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        this.setResizable(false);
-        this.setLayout(new FlowLayout(FlowLayout.LEFT));
-        activeUsersLabel.setFont(new Font(Font.DIALOG, Font.PLAIN, 18));
-        this.add(activeUsersLabel);
-        this.add(activeUsersComboBox);
-        activeUsersComboBox.setPrototypeDisplayValue(new User("                                                          ", null));
-        activeUsersComboBox.addPopupMenuListener(this);
-        startConnectionButton.addActionListener(this);
-        this.add(startConnectionButton);
-        new Thread(new GetActiveUsersThread()).start();
-        new Thread(new ConnectionListener()).start();
-        this.setVisible(true);
     }
 
     @Override
@@ -106,14 +110,33 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
             if (selectedUser == null) {
                 return;
             }
+            synchronized (activeUsers) {
+                if (activeUsers.contains(selectedUser)) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Istnieje już połączenie z tym użytkownikiem: " + selectedUser.getName(),
+                            "Nie mozna połączyć",
+                            JOptionPane.WARNING_MESSAGE
+                    );
+                    return;
+                }
+            }
             try {
                 Socket socket = new Socket(selectedUser.getAddress(), selectedUser.getPort());
                 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
                 ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
                 out.writeObject(user.getPort());
-                new ChatConnectionPanel(selectedUser, user, socket, out, in);
+                new ChatConnectionPanel(selectedUser, user, socket, out, in, activeUsers);
+                synchronized (activeUsers) {
+                    activeUsers.add(selectedUser);
+                }
             } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Nie można połaczyć się z uzytkownikiem",
+                        "BŁĄD",
+                        JOptionPane.ERROR_MESSAGE
+                );
             }
         }
     }
@@ -168,7 +191,10 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
                     terminalOut.writeObject(CommunicationSignals.GET_USER_BY_PORT);
                     terminalOut.writeObject(port);
                     User searchedUser = (User) terminalIn.readObject();
-                    new ChatConnectionPanel(searchedUser, user, socket, out, in);
+                    new ChatConnectionPanel(searchedUser, user, socket, out, in, activeUsers);
+                    synchronized (activeUsers) {
+                        activeUsers.add(searchedUser);
+                    }
                 } catch (IOException | ClassNotFoundException e) {
 
                 }
