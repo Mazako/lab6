@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ActiveUsersTerminal {
+class ActiveUsersTerminal {
     public static final int PORT = 6666;
 
     private static long staticUserId = 1L;
@@ -18,19 +18,31 @@ public class ActiveUsersTerminal {
     private ServerSocket serverSocket;
     private final Map<Long, User> activeUsers = new ConcurrentHashMap<>();
 
-    public void start() throws IOException {
-        serverSocket = new ServerSocket(PORT);
-        System.out.println("Uruchomiono terminal aktywnych użytkowników na porcie " + serverSocket.getLocalPort());
-        new Thread(new ActiveUsersThread()).start();
-        while (true) {
+    private volatile boolean isServerRunning = true;
 
+    public void start() throws IOException {
+        try {
+            serverSocket = new ServerSocket(PORT);
+            System.out.println("Uruchomiono terminal aktywnych użytkowników na porcie " + serverSocket.getLocalPort());
+            new Thread(new ActiveUsersThread()).start();
+            while (true) {
+                ClientConnectionThread clientConnectionThread = new ClientConnectionThread(serverSocket.accept());
+                new Thread(clientConnectionThread).start();
+            }
+        } catch (IOException e) {
+            System.out.println("Wystąpił wyjątek serwera: " + e);
+            System.out.println("Nasąpi zamknięcie serwera");
+            stop();
         }
     }
 
+    public void stop() throws IOException {
+        isServerRunning = false;
+        serverSocket.close();
+    }
+
     private class ClientConnectionThread implements Runnable {
-        private Socket clientSocket;
-        private ObjectOutputStream out;
-        private ObjectInputStream in;
+        private final Socket clientSocket;
 
         public ClientConnectionThread(Socket clientSocket) {
             this.clientSocket = clientSocket;
@@ -40,8 +52,8 @@ public class ActiveUsersTerminal {
         public void run() {
             System.out.println("Rozpoczęto połączenie z klientem: " + clientSocket.getInetAddress().getHostName());
             try {
-                out = new ObjectOutputStream(clientSocket.getOutputStream());
-                in = new ObjectInputStream(clientSocket.getInputStream());
+                ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+                ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
                 User newUser = (User) in.readObject();
                 long id = staticUserId++;
                 activeUsers.put(id, newUser);
@@ -59,7 +71,7 @@ public class ActiveUsersTerminal {
     private class ActiveUsersThread implements Runnable {
         @Override
         public void run() {
-            while (true) {
+            while (isServerRunning) {
                 String activeUsersInfo = activeUsers.values()
                         .stream()
                         .map(User::toString)
