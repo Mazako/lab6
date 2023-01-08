@@ -6,13 +6,28 @@ import java.util.Objects;
 public class User implements Serializable {
 
     private final String name;
+    private final String address;
+    private int port;
 
-    public User(String name) {
+    public User(String name, String address) {
         this.name = name;
+        this.address = address;
     }
 
     public String getName() {
         return name;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
     }
 
     @Override
@@ -30,6 +45,6 @@ public class User implements Serializable {
 
     @Override
     public String toString() {
-        return name;
+        return name + " " + address + " " + port;
     }
 }

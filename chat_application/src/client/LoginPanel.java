@@ -8,9 +8,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
-class LoginPanel extends JDialog implements ActionListener {
+class LoginPanel extends JFrame implements ActionListener {
 
     public static final int WIDTH = 400;
     public static final int HEIGHT = 300;

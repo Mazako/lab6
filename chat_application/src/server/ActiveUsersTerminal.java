@@ -6,7 +6,6 @@ import model.User;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,6 +19,7 @@ class ActiveUsersTerminal {
     private final Map<Long, User> activeUsers = new ConcurrentHashMap<>();
 
     private volatile boolean isServerRunning = true;
+    private final AllowedPortsPool allowedPortsPool = new AllowedPortsPool();
 
     public void start() throws IOException {
         try {
@@ -64,7 +64,10 @@ class ActiveUsersTerminal {
                     switch (signal) {
                         case SAVE_ME:
                             User user = (User) in.readObject();
+                            int nextPort = allowedPortsPool.getNextPort();
+                            user.setPort(nextPort);
                             activeUsers.put(id, user);
+                            out.writeObject(nextPort);
                             break;
                         case CLOSE_TERMINAL_CONNECTION:
                             out.writeObject(CommunicationSignals.BYE);
@@ -76,7 +79,8 @@ class ActiveUsersTerminal {
                     }
                 }
                 System.out.println("Koniec połączenia");
-                activeUsers.remove(id);
+                User removedUser = activeUsers.remove(id);
+                allowedPortsPool.addPort(removedUser.getPort());
                 out.close();
                 in.close();
                 clientSocket.close();
