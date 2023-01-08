@@ -8,7 +8,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class AllowedPortsPool {
+class AllowedPortsPool {
     private LinkedBlockingQueue<Integer> ports;
 
     public AllowedPortsPool() {

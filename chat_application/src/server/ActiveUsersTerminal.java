@@ -12,11 +12,9 @@ import java.util.concurrent.ConcurrentHashMap;
 class ActiveUsersTerminal {
     public static final int PORT = 6666;
 
-    private static long staticUserId = 1L;
-
     public static final int ACTIVE_USERS_TIMEOUT_MILIS = 5000;
     private ServerSocket serverSocket;
-    private final Map<Long, User> activeUsers = new ConcurrentHashMap<>();
+    private final Map<Integer, User> activeUsers = new ConcurrentHashMap<>();
 
     private volatile boolean isServerRunning = true;
     private final AllowedPortsPool allowedPortsPool = new AllowedPortsPool();
@@ -52,11 +50,10 @@ class ActiveUsersTerminal {
         @Override
         public void run() {
             System.out.println("Rozpoczęto połączenie z klientem: " + clientSocket.getInetAddress().getHostName());
-            long id = 0;
+            int activePort = 0;
             try {
                 ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
                 ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-                id = staticUserId++;
                 CommunicationSignals signal;
                 boolean closed = false;
                 while (!closed) {
@@ -64,10 +61,10 @@ class ActiveUsersTerminal {
                     switch (signal) {
                         case SAVE_ME:
                             User user = (User) in.readObject();
-                            int nextPort = allowedPortsPool.getNextPort();
-                            user.setPort(nextPort);
-                            activeUsers.put(id, user);
-                            out.writeObject(nextPort);
+                            activePort = allowedPortsPool.getNextPort();
+                            user.setPort(activePort);
+                            activeUsers.put(activePort, user);
+                            out.writeObject(activePort);
                             break;
                         case CLOSE_TERMINAL_CONNECTION:
                             out.writeObject(CommunicationSignals.BYE);
@@ -76,16 +73,23 @@ class ActiveUsersTerminal {
                         case SEND_ACTIVE_USERS:
                             User[] users = activeUsers.values().toArray(User[]::new);
                             out.writeObject(users);
+                            break;
+                        case GET_USER_BY_PORT:
+                            int port = (int) in.readObject();
+                            System.out.println(port);
+                            User searchedUser = activeUsers.get(port);
+                            out.writeObject(searchedUser);
+                            break;
                     }
                 }
                 System.out.println("Koniec połączenia");
-                User removedUser = activeUsers.remove(id);
+                User removedUser = activeUsers.remove(activePort);
                 allowedPortsPool.addPort(removedUser.getPort());
                 out.close();
                 in.close();
                 clientSocket.close();
             } catch (IOException | ClassNotFoundException e) {
-                activeUsers.remove(id);
+                activeUsers.remove(activePort);
                 throw new RuntimeException(e);
             }
         }

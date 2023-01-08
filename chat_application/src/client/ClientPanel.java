@@ -14,6 +14,7 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 
 class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
@@ -27,9 +28,11 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
     private final JComboBox<User> activeUsersComboBox = new JComboBox<>();
     private final JLabel activeUsersLabel = new JLabel("Aktywni użytkownicy: ");
     private final JButton startConnectionButton = new JButton("Połącz się");
+    private final ServerSocket serverSocket;
 
     public ClientPanel(Socket socket, String userName) throws IOException {
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        this.setDefaultCloseOperation(EXIT_ON_CLOSE);
+        //SOCKET PART
         user = new User(userName, socket.getInetAddress().getHostAddress());
         this.terminalSocket = socket;
         try {
@@ -59,6 +62,8 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
                         terminalOut.close();
                         terminalIn.close();
                         terminalSocket.close();
+                        serverSocket.close();
+                        System.exit(0);
                     }
 
                 } catch (IOException | ClassNotFoundException ex) {
@@ -71,6 +76,10 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
                 windowClosing(e);
             }
         });
+        serverSocket = new ServerSocket(user.getPort());
+        System.out.println("USER - " + user);
+        //END OF SOCKET PART
+        //GRAPHICAL PART
         this.setSize(WIDTH, HEIGHT);
         this.setLocationRelativeTo(null);
         this.setTitle("BlaBla BlaBla - " + user.getName());
@@ -85,12 +94,28 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
         startConnectionButton.addActionListener(this);
         this.add(startConnectionButton);
         new Thread(new GetActiveUsersThread()).start();
+        new Thread(new ConnectionListener()).start();
         this.setVisible(true);
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-
+        Object source = e.getSource();
+        if (source == startConnectionButton) {
+            User selectedUser = (User) activeUsersComboBox.getSelectedItem();
+            if (selectedUser == null) {
+                return;
+            }
+            try {
+                Socket socket = new Socket(selectedUser.getAddress(), selectedUser.getPort());
+                ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+                ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+                out.writeObject(user.getPort());
+                new ChatConnectionPanel(selectedUser, user, socket, out, in);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
     }
 
     @Override
@@ -126,6 +151,27 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
                 });
             } catch (IOException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private class ConnectionListener implements Runnable {
+
+        @Override
+        public void run() {
+            while (!serverSocket.isClosed()) {
+                try {
+                    Socket socket = serverSocket.accept();
+                    ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+                    ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+                    int port = (int) in.readObject();
+                    terminalOut.writeObject(CommunicationSignals.GET_USER_BY_PORT);
+                    terminalOut.writeObject(port);
+                    User searchedUser = (User) terminalIn.readObject();
+                    new ChatConnectionPanel(searchedUser, user, socket, out, in);
+                } catch (IOException | ClassNotFoundException e) {
+
+                }
             }
         }
     }

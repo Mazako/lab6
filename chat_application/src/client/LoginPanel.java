@@ -32,7 +32,7 @@ class LoginPanel extends JFrame implements ActionListener {
 
 
     public LoginPanel() {
-        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        this.setDefaultCloseOperation(EXIT_ON_CLOSE);
         this.setTitle("Logowanie do czatu");
         this.setSize(WIDTH, HEIGHT);
         this.setLocationRelativeTo(null);
