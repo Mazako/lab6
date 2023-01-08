@@ -1,3 +1,9 @@
+/*
+ *  Laboratorium 4
+ *
+ *   Autor: Michal Maziarz, 263913
+ *    Data: Styczeń 2023 r.
+ */
 package server;
 
 import java.util.concurrent.LinkedBlockingQueue;

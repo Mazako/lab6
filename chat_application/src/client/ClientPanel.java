@@ -1,3 +1,9 @@
+/*
+ *  Laboratorium 4
+ *
+ *   Autor: Michal Maziarz, 263913
+ *    Data: Styczeń 2023 r.
+ */
 package client;
 
 import model.CommunicationSignals;
@@ -21,7 +27,7 @@ import java.util.Collections;
 import java.util.List;
 
 class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
-    public static final int WIDTH = 500;
+    public static final int WIDTH = 530;
     public static final int HEIGHT = 100;
 
     private final User user;
@@ -33,6 +39,9 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
     private final JButton startConnectionButton = new JButton("Połącz się");
     private final ServerSocket serverSocket;
     private final List<User> activeUsers = Collections.synchronizedList(new ArrayList<>());
+    private final JMenuBar menuBar = new JMenuBar();
+    private final JMenu menuItem = new JMenu("Pomoc");
+    private final JMenuItem aboutMenu = new JMenuItem("Opis");
 
     public ClientPanel(Socket socket, String userName) throws IOException {
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -72,6 +81,10 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
         activeUsersComboBox.setPrototypeDisplayValue(new User("                                                          ", null));
         activeUsersComboBox.addPopupMenuListener(this);
         startConnectionButton.addActionListener(this);
+        menuItem.add(aboutMenu);
+        menuBar.add(menuItem);
+        aboutMenu.addActionListener(this);
+        this.setJMenuBar(menuBar);
         this.add(startConnectionButton);
         new Thread(new GetActiveUsersThread()).start();
         new Thread(new ConnectionListener()).start();
@@ -138,6 +151,13 @@ class ClientPanel extends JFrame implements ActionListener, PopupMenuListener {
                         JOptionPane.ERROR_MESSAGE
                 );
             }
+        } else if (source == aboutMenu) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Michal Maziarz, Laboratorium 6\n\nProsty program w stylu Gadu-Gadu wykorzystujący Sockety\nStyczeń 2023",
+                    "O programie",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
         }
     }
 
