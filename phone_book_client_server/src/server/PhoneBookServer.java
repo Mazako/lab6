@@ -1,5 +1,5 @@
 /*
- *  Laboratorium 4
+ *  Laboratorium 6
  *
  *   Autor: Michal Maziarz, 263913
  *    Data: Styczeń 2023 r.
